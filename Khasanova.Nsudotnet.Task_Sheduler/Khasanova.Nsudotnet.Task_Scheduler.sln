@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2012 for Windows Desktop
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Khasanova.Nsudotnet.Task_Sheduler", "Khasanova.Nsudotnet.Task_Sheduler\Khasanova.Nsudotnet.Task_Sheduler.csproj", "{DAEAB3D1-7E1D-4F96-AADC-8B4D6A863CD7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Khasanova.Nsudotnet.Task_Scheduler", "Khasanova.Nsudotnet.Task_Scheduler\Khasanova.Nsudotnet.Task_Scheduler.csproj", "{DAEAB3D1-7E1D-4F96-AADC-8B4D6A863CD7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
