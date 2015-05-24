@@ -5,33 +5,22 @@ using System.Threading;
 
 namespace TaskScheduler
 {
-    class Program
-    {
-        static void Main()
-        {
-            var ts = new TaskScheduler();
-            Console.WriteLine(DateTime.Now);
-
-            try
-            {
-                ts.SchedulePeriodicJob(() => Console.WriteLine("{0}, Выполнение началось!", DateTime.Now), "* * * * *");
-            }
-            catch (ArgumentException e)
-            {
-                Console.WriteLine(e.Message);
-            }
-        }
-    }
-
     public class TaskScheduler
     {
         public void ScheduleJob(Action job, DateTime dateTime)
         {
             var now = DateTime.Now;
-
             var ts = now > dateTime ? TimeSpan.Zero : dateTime - now;
             Thread.Sleep(ts);
             job();
+        }
+
+        public void ScheduleJobAsync(Action job, DateTime dateTime)
+        {
+            new Thread(() =>
+            {
+                ScheduleJob(job, dateTime);
+            }).Start();
         }
 
         public void ScheduleDelayedJob(Action job, TimeSpan delay)
@@ -39,17 +28,25 @@ namespace TaskScheduler
             ScheduleJob(job, DateTime.Now + delay);
         }
 
+        public void ScheduleDelayedJobAsync(Action job, TimeSpan delay)
+        {
+            new Thread(() => ScheduleJob(job, DateTime.Now + delay)).Start();
+        }
+
         public void SchedulePeriodicJob(Action job, TimeSpan period)
         {
-            while (true)
+            new Thread(() =>
             {
-                ScheduleDelayedJob(job, period);
-            }
+                while (true)
+                {
+                    ScheduleDelayedJob(job, period);
+                }
+            }).Start();
         }
 
         public void SchedulePeriodicJob(Action job, string cronExpression)
         {
-            var cronExpressionFormatException = new Lazy<ArgumentException>(() => new ArgumentException("Неправильный формат CronExpression!", "CronExpression"));
+            var cronExpressionFormatException = new Lazy<ArgumentException>(() => new ArgumentException("Неверный формат CronExpression!", "cronExpression"));
 
             var cronExprParts = cronExpression.Split(' ').ToList();
 
@@ -109,6 +106,10 @@ namespace TaskScheduler
             }
         }
 
+        public void SchedulePeriodicJobAsync(Action job, string cronExpression)
+        {
+            new Thread(() => SchedulePeriodicJob(job, cronExpression)).Start();
+        }
         public static IEnumerable<DateTime> DateTimeSequence(int? min, int? hour, int? dayOfMonth, int? month, int? dayOfWeek)
         {
             var last = DateTime.Now;
