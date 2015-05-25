@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic; 
-using System.CodeDom;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LinesCounter
 {
@@ -54,7 +51,6 @@ namespace LinesCounter
                 CountLines(Path.Combine(directoryName, subDirectory), extensions);
             }
 
-            var files = Directory.EnumerateFiles(directoryName);
             var selected = new List<string>();
 
             foreach (var extension in extensions)
@@ -63,25 +59,21 @@ namespace LinesCounter
             }
 
             var count = 0;
-
+            
             foreach (var file in selected)
             {
                 var isMultilineComment = false;
 
-                var multiStart = "/*";
-                var multiEnd = "*/";
-                var singleStart = "//";
+                const string multiEnd = "*/";
 
                 foreach (var line in File.ReadAllLines(file).Where(line => !string.IsNullOrWhiteSpace(line)))
                 {
                     if (isMultilineComment)
                     {
-                        var endCommentPosition = line.IndexOf(multiEnd);
+                        var endCommentPosition = line.IndexOf(multiEnd, StringComparison.Ordinal);
 
                         if (endCommentPosition != -1)
                         {
-                            var notComment = line.Substring(endCommentPosition + multiEnd.Length);
-
                             for (var i = endCommentPosition + multiEnd.Length; i < line.Length; i++)
                             {
                                 if (!char.IsWhiteSpace(line[i]))
@@ -97,8 +89,24 @@ namespace LinesCounter
                     }
                     else
                     {
-                        var singleCommentStart = line.IndexOf(singleStart);
-                        var multiCommentStart = line.IndexOf(multiStart);
+                        var singleCommentStart = -1;
+                        var multiCommentStart = -1;
+
+                        for (var i = 0; i < line.Length - 1; i++)
+                        {
+                            if (line[i] == '/')
+                            {
+                                switch (line[i + 1])
+                                {
+                                    case '/':
+                                        singleCommentStart = i;
+                                        break;
+                                    case '*':
+                                        multiCommentStart = i;
+                                        break;
+                                }
+                            }
+                        }
 
                         if (singleCommentStart != -1 && (multiCommentStart == -1 || singleCommentStart < multiCommentStart))
                         {
@@ -114,7 +122,7 @@ namespace LinesCounter
                         }
                         else if (multiCommentStart != -1 && (singleCommentStart == -1 || multiCommentStart < singleCommentStart))
                         {
-                            var multiCommentEnd = line.IndexOf(multiEnd, multiCommentStart + 2);
+                            var multiCommentEnd = line.IndexOf(multiEnd, multiCommentStart + 2, StringComparison.Ordinal);
                             var skipEnd = line.Length;
 
                             if (multiCommentEnd != -1)
@@ -126,19 +134,9 @@ namespace LinesCounter
                                 isMultilineComment = true;
                             }
 
-                            for (var i = 0; i < line.Length; i++)
+                            if (line.Where((t, i) => (i < multiCommentStart || i >= skipEnd) && !char.IsWhiteSpace(line, i)).Any())
                             {
-                                if (i >= multiCommentStart && i < skipEnd)
-                                {
-                                    continue;
-                                }
-
-                                if (!char.IsWhiteSpace(line, i))
-                                {
-                                    count++;
-
-                                    break;
-                                }
+                                count++;
                             }
                         }
                         else
