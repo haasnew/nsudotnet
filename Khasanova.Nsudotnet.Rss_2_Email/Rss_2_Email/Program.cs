@@ -16,7 +16,7 @@ namespace Rss2Email
         static void Main()
         {
             Console.Write("Укажите URL:");
-            var url = "http://www.5-tv.ru/news/rss/";  
+            var url = "http://bash.im/rss";  
             Console.WriteLine(url);
             Console.Write("email получателя:");
 
