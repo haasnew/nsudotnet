@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace TaskScheduler
 {
@@ -11,8 +11,7 @@ namespace TaskScheduler
 
             try
             {
-                ts.SchedulePeriodicJob(() => Console.WriteLine("{0}, Выполнение началось!", DateTime.Now), "* * * * *");
-                
+                ts.SchedulePeriodicJob(() => Console.WriteLine("{0}, task1!", DateTime.Now), TimeSpan.FromSeconds(1));
             }
             catch (ArgumentException e)
             {
