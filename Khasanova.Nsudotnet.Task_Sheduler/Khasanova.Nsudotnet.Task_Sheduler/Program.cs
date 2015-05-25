@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,20 +8,32 @@ namespace TaskScheduler
 {
     public class TaskScheduler
     {
-        public void ScheduleJob(Action job, DateTime dateTime)
-        {
-            var now = DateTime.Now;
-            var ts = now > dateTime ? TimeSpan.Zero : dateTime - now;
-            Thread.Sleep(ts);
-            job();
-        }
+        private readonly IList<Tuple<DateTime, Action>> _scheduledJobs;
 
-        public void ScheduleJobAsync(Action job, DateTime dateTime)
+        public TaskScheduler()
         {
+            _scheduledJobs = new List<Tuple<DateTime, Action>>();
             new Thread(() =>
             {
-                ScheduleJob(job, dateTime);
+                while (true)
+                {
+                    var now = DateTime.Now;
+                    var jobsToExecute = _scheduledJobs.Where(sj => sj.Item1 < now).ToList();
+                    foreach (var job in jobsToExecute)
+                    {
+                        _scheduledJobs.Remove(job);
+                        var jobAction = job.Item2;
+                        new Thread(() => jobAction()).Start();
+                    }
+
+                    Thread.Sleep(1000);
+                }
             }).Start();
+        }
+
+        public void ScheduleJob(Action job, DateTime dateTime)
+        {
+            _scheduledJobs.Add(new Tuple<DateTime, Action>(dateTime, job));
         }
 
         public void ScheduleDelayedJob(Action job, TimeSpan delay)
@@ -28,25 +41,30 @@ namespace TaskScheduler
             ScheduleJob(job, DateTime.Now + delay);
         }
 
-        public void ScheduleDelayedJobAsync(Action job, TimeSpan delay)
+        private void R(Action job, IEnumerator<DateTime> dateTimes)
         {
-            new Thread(() => ScheduleJob(job, DateTime.Now + delay)).Start();
+            dateTimes.MoveNext();
+            var currentDateTime = dateTimes.Current;
+            ScheduleJob(() => R(job, dateTimes), currentDateTime);
+            job();
+        }
+
+        public void SchedulePeriodicJob(Action job, IEnumerable<DateTime> times)
+        {
+            ScheduleDelayedJob(() => R(job, times.GetEnumerator()), TimeSpan.FromTicks(0));
         }
 
         public void SchedulePeriodicJob(Action job, TimeSpan period)
         {
-            new Thread(() =>
-            {
-                while (true)
-                {
-                    ScheduleDelayedJob(job, period);
-                }
-            }).Start();
+            var now = DateTime.Now;
+            var dateTimes =
+                period.Repeat().Select((p, i) => Enumerable.Repeat(p, i).Aggregate(now, (acc, curr) => acc + curr));
+            SchedulePeriodicJob(job, dateTimes);
         }
 
         public void SchedulePeriodicJob(Action job, string cronExpression)
         {
-            var cronExpressionFormatException = new Lazy<ArgumentException>(() => new ArgumentException("Неверный формат CronExpression!", "cronExpression"));
+            var cronExpressionFormatException = new Lazy<ArgumentException>(() => new ArgumentException("invalid CronExpression format!", "cronExpression"));
 
             var cronExprParts = cronExpression.Split(' ').ToList();
 
@@ -99,16 +117,7 @@ namespace TaskScheduler
 
             var dateTimes = DateTimeSequence(min, hour, dayOfMonth, month, dayOfWeek);
 
-            foreach (var dateTime in dateTimes)
-            {
-                Console.WriteLine("Работа планируется на {0}", dateTime);
-                ScheduleJob(job, dateTime);
-            }
-        }
-
-        public void SchedulePeriodicJobAsync(Action job, string cronExpression)
-        {
-            new Thread(() => SchedulePeriodicJob(job, cronExpression)).Start();
+            SchedulePeriodicJob(job, dateTimes);
         }
         public static IEnumerable<DateTime> DateTimeSequence(int? min, int? hour, int? dayOfMonth, int? month, int? dayOfWeek)
         {
@@ -177,5 +186,15 @@ namespace TaskScheduler
             }
         }
     }
-}
 
+    public static class Utils
+    {
+        public static IEnumerable<T> Repeat<T>(this T obj)
+        {
+            while (true)
+            {
+                yield return obj;
+            }
+        }
+    }
+}
